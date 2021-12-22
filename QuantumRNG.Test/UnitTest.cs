@@ -24,6 +24,7 @@ namespace QuantumRNG.Test
         [InlineData(1, 12)]
         [InlineData(1, 20)]
         [InlineData(1, 100)]
+        [InlineData(1, int.MaxValue)]
         public void ReturnRandomDice(int min, int max)
         {
             var response = _qrgn.NextInt(min, max);
@@ -40,6 +41,7 @@ namespace QuantumRNG.Test
         [InlineData(5, 20)]
         [InlineData(-99, 100)]
         [InlineData(-100, 0)]
+        [InlineData(int.MinValue, 0)]
         public void ReturnRandomNegativeBoundInteger(int min, int max)
         {
             var response = _qrgn.NextInt(min, max);
