@@ -1,19 +1,20 @@
 using Xunit;
 using System.Linq;
 using System;
+using QuantumRNG.Store;
 using Xunit.Abstractions;
 
 namespace QuantumRNG.Test
 {
     public class UnitTest
     {
-        private readonly QuantumRNG _qrgn = new();
+        private readonly QuantumRNG _qrgn = new(new InMemoryQuantumCache());
 
-        private readonly ITestOutputHelper output;
+        private readonly ITestOutputHelper _output;
 
         public UnitTest(ITestOutputHelper output)
         {
-            this.output = output;
+            _output = output;
         }
 
         [Theory]
@@ -29,7 +30,7 @@ namespace QuantumRNG.Test
         {
             var response = _qrgn.NextInt(min, max);
 
-            output.WriteLine($"{response}");
+            _output.WriteLine($"{response}");
         }
 
         [Theory]
@@ -46,7 +47,7 @@ namespace QuantumRNG.Test
         {
             var response = _qrgn.NextInt(min, max);
 
-            output.WriteLine($"{response}");
+            _output.WriteLine($"{response}");
         }
 
         [Theory]
@@ -61,7 +62,14 @@ namespace QuantumRNG.Test
         {
             var response = _qrgn.NextDouble(min, max, decimalPlaces);
 
-            output.WriteLine($"{response}");
+            _output.WriteLine($"{response}");
+        }
+
+        [Fact]
+        public void ClearCache()
+        {
+            _qrgn.Cache.ClearCache();
+            Assert.Equal(0, _qrgn.Cache.GetItemsInCacheCount());
         }
     }
 }
