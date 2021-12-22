@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Linq;
 using System.Collections.Generic;
+using QuantumRNG.Store;
 using QuantumRNG.Utils;
 
 namespace QuantumRNG
@@ -12,18 +13,17 @@ namespace QuantumRNG
         private readonly HttpClient _httpClient;
         private readonly Random _rng;
 
-        private record QrngResponse(string Type, short Length, short Size, string[] Data, bool Success);
-
-        private readonly Queue<byte> _cache;
-
         private readonly int _cacheSize;
+        public IQuantumCache Cache { get; set; }
 
-        public QuantumRNG(int cacheSize = 512)
+        private record QrngResponse(string Type, short Length, short Size, string[] Data, bool Success);
+        
+        public QuantumRNG(IQuantumCache cache, int cacheSize = 512)
         {
+            Cache = cache;
             _httpClient = new HttpClient();
             _rng = new Random();
-            _cache = new Queue<byte>();
-            _cacheSize = Math.Min(cacheSize, 1024);
+            _cacheSize = cacheSize;
         }
 
         private IEnumerable<byte> GetQuantumNumberFromApi(int quantity)
@@ -35,30 +35,19 @@ namespace QuantumRNG
             return response?.Data.SelectMany(Convert.FromHexString);
         }
 
-        private IEnumerable<byte> GetBytesFromCache(int quantity)
+        private IEnumerable<byte> GetBytes(int quantity)
         {
-            if (_cache.Count == 0 || quantity > _cache.Count)
-            {
-                var request = GetQuantumNumberFromApi(_cacheSize).ToArray();
+            if (Cache.GetItemsInCacheCount() == 0 || quantity > Cache.GetItemsInCacheCount())
+                Cache.InsertIntoCache(GetQuantumNumberFromApi(_cacheSize));
 
-                foreach (var value in request)
-                {
-                    _cache.Enqueue(value);
-                }
-            }
-
-            for (var i = 0; i < quantity; i++)
-                yield return _cache.Dequeue();
+            return Cache.GetBytesFromCache(quantity);
         }
-
-        public void ClearCache() => _cache.Clear();
 
         public ulong NextInt(int min, int max)
         {
-            IEnumerable<byte> bytesFromCache;
-            var byteQuantity = (int) Math.Max(Math.Log2(MathUtils.ApproximatePowerOf2((ulong)max)/8), 1);
+            var byteQuantity = (int) Math.Max(Math.Log2(MathUtils.ApproximatePowerOf2((ulong)max))/8, 1);
             var bytesToComplete = Enumerable.Repeat((byte) 0, 8 - byteQuantity).ToList();
-            bytesFromCache = bytesToComplete.Concat(GetBytesFromCache(byteQuantity).ToList());
+            var bytesFromCache = bytesToComplete.Concat(GetBytes(byteQuantity).ToList());
 
             var randomNumber =
                 BitConverter.ToUInt64(bytesFromCache.ToArray());
